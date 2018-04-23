@@ -3,7 +3,7 @@ import numpy.matlib
 import math
 import matplotlib.pyplot as plt
 
-def mainloop(leaky=False, dinit=False, neighbours=False, show=False):
+def mainloop(leaky=False, dinit=False, show=False, tmax=10000):
     train = np.genfromtxt('digits/train.csv', delimiter=",")
     trainlabels = np.genfromtxt('digits/trainlabels.csv', delimiter=",")
     
@@ -13,16 +13,14 @@ def mainloop(leaky=False, dinit=False, neighbours=False, show=False):
     theta = 5E-5 # Learning rate of other units. An few orders of magnitude smaller.
     winit = 1 # This scales the random numbers
     alpha = 0.999 # This is just a graphing term.
-    cost = 0
+    costs = 0
 
-    tmax = 40000 # The amount of timesteps/iterations of the algorithm.
     digits = 15 # the amount of class reconstructions. 
 
     # Initialising from a random sample in the data
     if dinit:
         index = np.random.choice(n, digits)
-        winit = train[index]
-        print(winit)
+        winit = train[:, index].T
 
     # Weight matrix (rows = output neurons, cols = input neurons)
     W = winit * np.random.rand(digits, n) # Random weights for the network
@@ -83,7 +81,7 @@ def mainloop(leaky=False, dinit=False, neighbours=False, show=False):
         # get closer to the input (x - W)
 
         # % weight change over time (running avg)
-        wCount[0, t] = wCount[0, t-1] * (alpha + dw.dot(dw.T)*(1-alpha)) # This is te exponential decay shown in the graph.
+        wCount[0, t] = wCount[0, t-1] * (alpha + dw.dot(dw.T)*(1-alpha)) # Puts the data on the log scale
 
         # weights for k-th output are updated
         W[k, :] +=  dw # Finally add the weights to produce the weight change.
@@ -99,12 +97,9 @@ def mainloop(leaky=False, dinit=False, neighbours=False, show=False):
             theta_dw_higher = theta * (x.T - W[k+1:, :])
             W[:k, :] += theta_dw_lower
             W[k+1:, :] += theta_dw_higher
-        
-        if neighbours:
-            # TODO implement the neighbours function
-            print("neighbours")
 
-        cost += 0.5*(W[k, :] - x)**2
+        # The reconstruction error.
+        costs += (W[k, :] - x)**2
 
         if not (t % 300 or t == 1) and show:
             for ii in range(yl):
@@ -144,39 +139,44 @@ def mainloop(leaky=False, dinit=False, neighbours=False, show=False):
             axes_stats[4].clear()
             axes_stats[4].bar(np.arange(1, digits+1), np.reshape(counter.T, digits),
                             align='center', color='#57106e')
-
-            print(dead_units)
             
             plt.show()
             plt.pause(0.0001)
 
-    # Saving the figures ----------------------------------------
-    plt.waitforbuttonpress()
-    fig_neurs.savefig('fig_neurs.pdf')
-    fig_stats.savefig('fig_stats.pdf')
+    if show:
+        # Saving the figures ----------------------------------------
+        plt.waitforbuttonpress()
+        fig_neurs.savefig('fig_neurs.pdf')
+        fig_stats.savefig('fig_stats.pdf')
 
-    axes_stats[3].get_window_extent().transformed(fig_stats.dpi_scale_trans.inverted())
-    fig_stats.savefig('average_weight_changes.pdf')
-    # might need to include bbox_inches=extent.expanded(1.1, 1.2)
+        axes_stats[3].get_window_extent().transformed(fig_stats.dpi_scale_trans.inverted())
+        fig_stats.title("Average Weight Change")
+        fig_stats.ylabel("Weight Change")
+        fig_stats.xlabel("Time")
+        fig_stats.savefig('average_weight_changes.pdf')
+        # might need to include bbox_inches=extent.expanded(1.1, 1.2)
 
-    plt.clf()
-    plt.cla()
-    plt.close()
+        # Clearing the figure
+        plt.clf()
+        plt.cla()
+        plt.close()
 
-    # Correlation matrix of the prototypes
-    corr = np.corrcoef(W)
-    plt.figure()
-    plt.imshow(corr, interpolation="nearest", cmap="inferno")
-    plt.title('Correlation Of Prototypes')
-    plt.ylabel("prototype")
-    plt.xlabel("prototype")
-    plt.colorbar()
-    plt.savefig('correlation_matrix.pdf')
+        # Correlation matrix of the prototypes
+        corr = np.corrcoef(W)
+        plt.figure()
+        plt.imshow(corr, interpolation="nearest", cmap="inferno")
+        plt.title('Correlation Of Prototypes')
+        plt.ylabel("prototype")
+        plt.xlabel("prototype")
+        plt.colorbar()
+        plt.savefig('correlation_matrix.pdf')
 
-    print(str(len(counter[0] - len(dead_units) + " prototypes were found.")))
+    print(str(len(counter[0]) - len(dead_units)) + " prototypes were found.")
+    return np.array([len(dead_units), sum(costs)])
 
 def main():
-    mainloop(leaky=True, dinit=False)
+    # Run the loop with these heuristics
+    print(mainloop(leaky=True, dinit=False))
 
 if __name__ == '__main__':
     main()

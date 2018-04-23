@@ -7,85 +7,65 @@ from mpl_toolkits.mplot3d import Axes3D
 
 
 def main():
-    ## load the dataset
+    # load the dataset
     train = np.genfromtxt('digits/train.csv', delimiter=",")
     trainlabels = np.genfromtxt('digits/trainlabels.csv', delimiter=",")
 
-    [n, m] = np.shape(train)  # pixels * observations 
-    # The pixels are what you are trying to reduce.abs
-    # From the pixels you can classify the letter type.
+    # pixels * observations
+    [n, m] = np.shape(train)  
+
     # The letter type is dependent on the pixels.
-    #n = 784 = 28x28 pixels 
-    #m = 5000 (images/observations)
     pixels = 28
 
     # This is calculating the magnitude
-    # The np.diag function is a vectorisation technique.
-    # Is this calculation for each subject?
     normT = np.sqrt(np.diag(train.T.dot(train)))
 
+    # Normalising the data
     train = train / np.matlib.repmat(normT.T, n, 1)
+
     # Putting the data in terms of features.
     data = train.T
 
     # number of Principal Components to save
     nPC = 6
 
-    # n is the number of features, d would of been a better variable name.
-    # Init with zeros for performance
+    # n is the number of features.
     PCV = np.zeros((n, nPC))
 
     # Center data around the mean
-    # Choose axis 0 so that its the mean of the features
-    # Why do you transpose so that the data is in the the shape of observations?
-    # Is it to correctly minus the mean
     meanData = np.matlib.repmat(data.mean(axis=0), m, 1)
     data = data - meanData # This simply equates to normalising by the mean
 
     # Compute the covariance matrix in terms of observations and features.
-    # This is just how the cov function works.
-    # Hence the transpose
     C = np.cov(data.T)
 
     # Solve an ordinary or generalized eigenvalue problem
-    # for a complex Hermitian or real symmetric matrix.
-    # There are 784 dimensions to the data
-    # The eigenvector is a square matrix of 784 components
     eigen_val, eigen_vec = np.linalg.eigh(C)
 
     # sorting the eigenvalues in descending order
-    # Returns the indices not the array contents
     idx = np.argsort(eigen_val)
     idx = idx[::-1] # Reverses the array
-    # sorting eigenvectors according to the sorted eigenvalues
+    
     # Use the indices to sort the eigenvectors 
-    # remeber its column * row
     eigen_vec = eigen_vec[:, idx] 
-    # sorting eigenvalues
+    
     # SORT BY EIGENVALUES and keep EIGENVECTORS
     eigen_val = eigen_val[idx] # new ordering
 
     # save only the most significant eigen vectors
-    # 6 values for each feature... 
-    # I thought it would be 6 values for each observation
-    # It is altered from 784*784 to 784*6
     PCV[:, :nPC] = eigen_vec[:, :nPC]
 
-    # apply transformation
-    # This also reduces the dimensions.
-    # This is a useful side effect of the dot product.
-    # Data is already transposed
+    # apply transformation on the data
     FinalData = data.dot(PCV)
 
-
     # find indexes of data for each digit
-    # Seperate plots for each digit.
     zeroData = (trainlabels == 0).nonzero()
     twoData = (trainlabels == 2).nonzero()
     fourData = (trainlabels == 4).nonzero()
     sevenData = (trainlabels == 7).nonzero()
     eightData = (trainlabels == 8).nonzero()
 
+    # Init labels for the figures
     def_labels = 'Zeros Twos Fours Sevens Eights'.split()
     color = 'r. g. m. y. b.'.split()
     allData=[zeroData,twoData,fourData,sevenData,eightData]
@@ -96,6 +76,7 @@ def main():
             fig = plt.figure(figsize=(7, 7))
             ax = fig.gca(projection='3d')
 
+        # Generalise the plotting of datapoints
         i=0 
         for dataName in allData:
             xcomp = FinalData[dataName, x].flatten()
@@ -104,6 +85,7 @@ def main():
             ax.plot(xcomp, ycomp, zcomp, color[i], label=def_labels[i])
             i+=1
 
+        # Add the labels to the figures
         label = str(x)+', '+str(y)+' and '+str(z)+' PC'
         ax.set_title(label)
         ax.set_xlabel(str(x)+' Principle Component')
@@ -142,9 +124,10 @@ def main():
         #     plt.show()
         # else:
         for xyz in d_list:
+            print("Plotting")
             x,y,z = xyz
             xyzplot(x,y,z)
-            plt.show()
+            # plt.show()
             
     iter_plot(initial_plots, indie=False)
 
